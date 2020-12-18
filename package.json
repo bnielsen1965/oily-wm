@@ -1,0 +1,8 @@
+{
+  "name": "oily-wm",
+  "workspaces": {
+    "packages": [
+      "packages/*"
+    ]
+  }
+}
