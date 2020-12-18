@@ -78,14 +78,13 @@ display.init()
     console.log('Clipping test...');
     display.clearBuffer();
     display.drawRect(20, 10, 40, 30, 1);
-    display.setClipped((x, y) => {
-      if (x >= 19 && x <= 61 && y >= 9 & y <= 41) return true;
-      return false;
-    });
     return display.updateDisplay();
   })
   .then(() => {
-    display.drawFillRect(5, 5, 100, 50, 1);
+    display.drawFillRect(5, 5, 100, 50, 1, (x, y) => {
+      if (x >= 19 && x <= 61 && y >= 9 & y <= 41) return true;
+      return false;
+    });
     return display.updateDisplay();
   })
   .then(() => {
@@ -98,8 +97,14 @@ display.init()
     return sleep(3000);
   })
   .then(() => {
-    display.drawFillRect(5, 20, 30, 30, 0);
-    display.drawFillRect(50, 5, 50, 50, 1);
+    display.drawFillRect(5, 20, 30, 30, 0, (x, y) => {
+      if (x >= 19 && x <= 61 && y >= 9 & y <= 41) return true;
+      return false;
+    });
+    display.drawFillRect(50, 5, 50, 50, 1, (x, y) => {
+      if (x >= 19 && x <= 61 && y >= 9 & y <= 41) return true;
+      return false;
+    });
     return display.updateDisplay();
   })
   .then(() => {
@@ -160,7 +165,7 @@ async function spiral (c) {
 async function contrast () {
   let c = 0;
   do {
-    display.drawFillRect(64, 10, 20, )
+    display.drawFillRect(64, 10, 20, 40);
     display.setCursor(64, 10);
     // use 5x7 font to draw string with newline to jump cursor to next line
     display.drawString(`${c}`, FSFontImageMap);

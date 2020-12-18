@@ -205,15 +205,9 @@ class Display {
 
   // check if a coordinate is clipped
   clipped (x, y) {
-    if (this.Config.clippedMethod) return this.Config.clippedMethod(x, y);
     if (x !== null && (x < 0 || x >= this.Config.columns)) return true;
     if (y !== null && (y < 0 || y >= this.Config.rows)) return true;
     return false;
-  }
-
-  // set an external clipping method
-  setClipped (clippedMethod) {
-    this.Config.clippedMethod = clippedMethod;
   }
 
 
@@ -229,7 +223,7 @@ class Display {
   }
 
   // draw a string using provided font image map
-  drawString (str, fontIM, wrap) {
+  drawString (str, fontIM, wrap, clipping) {
     let words = str.split(' ');
     let colOffset = this.cursorx;
     for (let wi = 0; wi < words.length; wi++) {
@@ -252,8 +246,8 @@ class Display {
           let charImage = fontIM[wordChars[ci]];
           // if not transparent font image then fill in spacing before drawing char image
           if (charImage.channels !== 2 && charImage.channels !== 4)
-            this.drawFillRect(colOffset, this.cursory, charImage.width + this.Config.letterSpacing, charImage.height + this.Config.lineSpacing, 0);
-          this.drawImage(colOffset, this.cursory, charImage);
+            this.drawFillRect(colOffset, this.cursory, charImage.width + this.Config.letterSpacing, charImage.height + this.Config.lineSpacing, 0, clipping);
+          this.drawImage(colOffset, this.cursory, charImage, clipping);
           colOffset += charImage.width + this.Config.letterSpacing;
           // check if wrap and no room for next char
           if (wrap && colOffset >= this.Config.columns - fontIM.width) {
@@ -267,7 +261,7 @@ class Display {
   }
 
   // draw pixels in the buffer, pixels is an array where each element is an array [x, y, color]
-  drawPixels (pixels) {
+  drawPixels (pixels, clipping) {
     // if one pixel is passed then convert to array of one pixel
     if (!Array.isArray(pixels[0])) pixels = [pixels];
     let pixelByte;
@@ -276,8 +270,8 @@ class Display {
     let bufferByte;
 
     pixels.forEach(pixel => {
-      // don't process if coords are outside of display buffer
-      if (this.clipped(pixel[0], pixel[1])) return;
+      // don't process if coords are clipped or outside of display buffer
+      if ((clipping && clipping(pixel[0], pixel[1])) || this.clipped(pixel[0], pixel[1])) return;
 
       // determine buffer page and column byte from pixel y coord
       bufferPage = Math.floor(pixel[1] / 8);
@@ -300,7 +294,7 @@ class Display {
   }
 
   // using Bresenham's line algorithm
-  drawLine (x0, y0, x1, y1, color) {
+  drawLine (x0, y0, x1, y1, color, clipping) {
     // protect against infinite loops
     x0 = Math.round(x0 || 0);
     y0 = Math.round(y0 || 0);
@@ -316,7 +310,7 @@ class Display {
     while (true) {
       linePixels.push([x0, y0, color]);
       if (x0 === x1 && y0 === y1) {
-        this.drawPixels(linePixels);
+        this.drawPixels(linePixels, clipping);
         break;
       }
       let e2 = err;
@@ -332,21 +326,21 @@ class Display {
   }
 
   // draw a rectangle
-  drawRect (x, y, w, h, color) {
-    this.drawLine(x, y, x, y + h, color);
-    this.drawLine(x, y + h, x + w, y + h, color);
-    this.drawLine(x + w, y + h, x + w, y, color);
-    this.drawLine(x + w, y, x, y, color);
+  drawRect (x, y, w, h, color, clipping) {
+    this.drawLine(x, y, x, y + h, color, clipping);
+    this.drawLine(x, y + h, x + w, y + h, color, clipping);
+    this.drawLine(x + w, y + h, x + w, y, color, clipping);
+    this.drawLine(x + w, y, x, y, color, clipping);
   }
 
   // draw a filled rectangle on the oled
-  drawFillRect (x, y, w, h, color) {
+  drawFillRect (x, y, w, h, color, clipping) {
     // one iteration for each column of the rectangle
-    for (let i = x; i < x + w; i += 1) this.drawLine(i, y, i, y + h - 1, color, false);
+    for (let i = x; i < x + w; i += 1) this.drawLine(i, y, i, y + h - 1, color, clipping);
   }
 
   // draw image from pngparse at the specified coordinates
-  drawImage (dx, dy, image) {
+  drawImage (dx, dy, image, clipping) {
     dx = dx || 0;
     dy = dy || 0;
     let dyy;
@@ -362,12 +356,12 @@ class Display {
     // outer loop through columns
     for (let x = 0; x < image.width; x++) {
       dxx = dx + x;
-      if (this.clipped(dxx, null)) continue;
+      if ((clipping && clipping(dxx, dyy)) || this.clipped(dxx, null)) continue;
       page = -1; // reset page
       // inner loop through rows
       for (let y = 0; y < image.height; y++) {
         dyy = dy + y;
-        if (this.clipped(null, dyy)) continue;
+        if ((clipping && clipping(dxx, dyy)) || this.clipped(null, dyy)) continue;
         // calculate buffer page for y coord
         dyyPage = Math.floor(dyy / 8);
         // check if new page
