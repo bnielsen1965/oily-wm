@@ -1,8 +1,12 @@
 
 const Defaults = {
   position: { x: 0, y: 0 },
+  size: { width: 20, height: 20 },
   border: { size: 1 },
-  size: { width: 20, height: 20 }
+
+  // character draw settings
+  lineSpacing: 1, // space between lines when writing strings
+  letterSpacing: 1 // space between characters when writing characters
 };
 
 
@@ -66,7 +70,7 @@ class Window {
 
   // draw window
   drawWindow () {
-    this.Config.display.drawImage(this.home.x, this.home.y, this.image, this.clipped.bind(this));
+    this.Config.display.drawImage(this.home.x, this.home.y, this.image, this.externalClipped.bind(this));
   }
 
 
@@ -126,16 +130,8 @@ class Window {
   setCursor (x, y) {
     this.cursor.x = x;
     this.cursor.y = y;
-    this.setDisplayCursor(x, y);
   }
-
-  setDisplayCursor (x, y) {
-    this.Config.display.setCursor(
-      this.translateX(coord.x),
-      this.translateY(coord.y)
-    )
-  }
-
+  
   // draw a rectangle
   drawRect (x, y, w, h, color) {
     this.drawLine(x, y, x, y + h, color);
@@ -200,10 +196,51 @@ class Window {
     this.image.data[pixel[0] + pixel[1] * this.Config.size.width] = pixel[2];
   }
 
+// TODO look into oled-js-font-foundry
+// TODO support non-monospaced fonts
+  // draw a string using provided font image map
   drawString (str, fontIM, wrap) {
-    // TODO all windows will share display cursor!!!
-    // maybe pass cursor position in drawString and return new cursor position
-    this.Config.display.drawString(str, fontIM, (wrap || false), this.clipped.bind(this));
+    let colOffset = this.cursor.x;
+    let lines = str.split('\n');
+    for (let li = 0; li < lines.length; li++) {
+      let words = lines[li].split(' ');
+      let addSpace = false;
+      for (let wi = 0; wi < words.length; wi++) {
+        let word = words[wi];
+        if (wrap && colOffset > 0 && colOffset + word.length * fontIM.width > this.Config.size.width + (addSpace ? fontIM.width : 0)) {
+          // wrap word
+          this.cursor.y += fontIM.height + this.Config.lineSpacing;
+          this.cursor.x = 0;
+          colOffset = 0;
+          addSpace = false;
+        }
+        let chars = word.split('');
+        if (addSpace) chars.unshift(' ');
+        for (let ci = 0; ci < chars.length; ci++) {
+          let charImage = fontIM[chars[ci]];
+          // if not transparent font image then fill in spacing before drawing char image
+          if (charImage.channels !== 2 && charImage.channels !== 4)
+            this.drawFillRect(colOffset, this.cursor.y, charImage.width + this.Config.letterSpacing, charImage.height + this.Config.lineSpacing, 0);
+          this.drawImage(colOffset, this.cursor.y, charImage);
+          colOffset += charImage.width + this.Config.letterSpacing;
+          // check if wrap and no room for next char
+          if (wrap && colOffset >= this.Config.size.width - fontIM.width) {
+            this.cursor.y += fontIM.height + this.Config.lineSpacing;
+            this.cursor.x = 0;
+            colOffset = 0;
+            addSpace = false;
+          }
+          else addSpace = true;
+          this.setCursor(colOffset, this.cursor.y);
+        }
+      }
+      // if not last line then new line
+      if (li < lines.length - 1) {
+        this.cursor.y += fontIM.height + this.Config.lineSpacing;
+        this.cursor.x = 0;
+        colOffset = 0;
+      }
+    }
   }
 
   // draw image from pngparse at the specified coordinates

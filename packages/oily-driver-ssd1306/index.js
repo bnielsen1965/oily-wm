@@ -222,6 +222,7 @@ class Display {
     this.cursory = y;
   }
 
+// TODO consider window method as alternative drawString
   // draw a string using provided font image map
   drawString (str, fontIM, wrap, clipping) {
     let words = str.split(' ');
@@ -356,12 +357,11 @@ class Display {
     // outer loop through columns
     for (let x = 0; x < image.width; x++) {
       dxx = dx + x;
-      if ((clipping && clipping(dxx, dyy)) || this.clipped(dxx, null)) continue;
       page = -1; // reset page
       // inner loop through rows
       for (let y = 0; y < image.height; y++) {
         dyy = dy + y;
-        if ((clipping && clipping(dxx, dyy)) || this.clipped(null, dyy)) continue;
+        if ((clipping && clipping(dxx, dyy)) || this.clipped(dxx, dyy)) continue;
         // calculate buffer page for y coord
         dyyPage = Math.floor(dyy / 8);
         // check if new page

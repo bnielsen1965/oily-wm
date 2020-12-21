@@ -34,7 +34,7 @@ class WindowManager {
     // remove window
     this.windows.splice(di, 1);
     this.setZIndicies();
-    window.Config.zIndex = this.windows.length;
+    window.Config.zIndex = null;//this.windows.length;
     window.destroy();
     // redraw all windows
     for (let i = this.windows.length - 1; i >= 0; i--) {
